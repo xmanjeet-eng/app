@@ -1,0 +1,32 @@
+{
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.10",
+      "maxDuration": 30,
+      "memory": 1024,
+      "handler": "handler"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ],
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ]
+}

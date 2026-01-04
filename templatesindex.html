@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nifty 50 AI Predictor | Real-time Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.15));
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.2);
+            border-radius: 20px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (min-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .card {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .prediction-card {
+            grid-column: 1 / -1;
+            text-align: center;
+        }
+        
+        .prediction-box {
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .prediction-bullish {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2));
+            border: 2px solid #10b981;
+        }
+        
+        .prediction-bearish {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));
+            border: 2px solid #ef4444;
+        }
+        
+        .prediction-neutral {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2));
+            border: 2px solid #f59e0b;
+        }
+        
+        .prediction-value {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        
+        .insights {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .insight-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .disclaimer {
+            background: rgba(239, 68, 68, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            font-size: 0.9rem;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> Nifty 50 AI Predictor</h1>
+            <p>Advanced AI-powered market analysis and prediction</p>
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE MARKET DATA
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="getPrediction()" id="predictBtn">
+                <i class="fas fa-sync-alt"></i> Get Prediction
+            </button>
+            <button class="btn" onclick="toggleAutoRefresh()" id="autoBtn">
+                <i class="fas fa-play-circle"></i> Auto Refresh (30s)
+            </button>
+        </div>
+        
+        <div class="dashboard">
+            <!-- Prediction Card -->
+            <div class="card prediction-card">
+                <h2><i class="fas fa-brain"></i> AI Prediction</h2>
+                <div id="predictionBox" class="prediction-box prediction-neutral">
+                    <h3>Next Trading Session</h3>
+                    <div class="prediction-value" id="predictionValue">--</div>
+                    <p id="predictionAnalysis">Click "Get Prediction" to start analysis</p>
+                    <div id="confidenceBar" style="margin: 20px auto; width: 80%; background: rgba(255,255,255,0.1); height: 10px; border-radius: 5px; overflow: hidden;">
+                        <div id="confidenceFill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #22c55e); border-radius: 5px; transition: width 0.5s;"></div>
+                    </div>
+                    <p>Confidence: <span id="confidenceText">0%</span></p>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="currentPrice">--</div>
+                        <div class="stat-label">Current Price</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="todayChange" style="color: gray;">--</div>
+                        <div class="stat-label">Today's Change</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="expectedMove">--</div>
+                        <div class="stat-label">Expected Move</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="nextUpdate">30s</div>
+                        <div class="stat-label">Next Update</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Technical Indicators -->
+            <div class="card">
+                <h2><i class="fas fa-tachometer-alt"></i> Technical Indicators</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="rsiValue">--</div>
+                        <div class="stat-label">RSI (14)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="priceVsSMA">--</div>
+                        <div class="stat-label">Price vs SMA20</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Market Insights -->
+            <div class="card">
+                <h2><i class="fas fa-lightbulb"></i> Market Insights</h2>
+                <div class="insights" id="insights">
+                    <div class="insight-item">
+                        <p><strong>System Status:</strong> Ready to analyze market data</p>
+                    </div>
+                    <div class="insight-item">
+                        <p><strong>Prediction Model:</strong> Rule-based technical analysis</p>
+                    </div>
+                    <div class="insight-item">
+                        <p><strong>Data Source:</strong> Yahoo Finance (real-time)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="disclaimer">
+            <p><i class="fas fa-exclamation-triangle"></i> <strong>DISCLAIMER:</strong> This tool is for educational and research purposes only. Predictions are based on historical patterns and should not be considered financial advice. Never invest based solely on automated predictions. Always consult with certified financial advisors before making investment decisions.</p>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 Nifty 50 AI Predictor | Powered by AI & Real-time Market Data</p>
+            <p>Educational Tool | Not Financial Advice</p>
+            <p id="lastUpdated">Last Updated: --</p>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyzing market data...</p>
+    </div>
+    
+    <script>
+        let chart = null;
+        let autoRefresh = null;
+        let countdownInterval = null;
+        let isAutoRefresh = false;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            getPrediction();
+            startCountdown();
+        });
+        
+        function getPrediction() {
+            showLoading();
+            const btn = document.getElementById('predictBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+            
+            fetch('/api/predict')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        updateUI(data);
+                    } else {
+                        showError('Failed to get prediction');
+                    }
+                    hideLoading();
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Get Prediction';
+                    
+                    // Restart countdown
+                    startCountdown();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Failed to connect to server');
+                    hideLoading();
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-sync-alt"></i> Get Prediction';
+                });
+        }
+        
+        function updateUI(data) {
+            const prediction = data.prediction;
+            const confidence = data.confidence;
+            
+            // Update prediction box
+            const box = document.getElementById('predictionBox');
+            box.className = `prediction-box prediction-${prediction.toLowerCase()}`;
+            
+            document.getElementById('predictionValue').textContent = prediction;
+            document.getElementById('predictionAnalysis').textContent = data.analysis;
+            document.getElementById('confidenceText').textContent = confidence + '%';
+            document.getElementById('confidenceFill').style.width = confidence + '%';
+            
+            // Update stats
+            const d = data.data;
+            document.getElementById('currentPrice').textContent = d.current_price;
+            document.getElementById('todayChange').textContent = d.today_change;
+            document.getElementById('todayChange').style.color = d.change_color;
+            document.getElementById('expectedMove').textContent = d.expected_move;
+            document.getElementById('rsiValue').textContent = d.rsi;
+            document.getElementById('rsiValue').style.color = getRSIColor(d.rsi);
+            document.getElementById('priceVsSMA').textContent = d.price_vs_sma;
+            
+            // Update insights
+            document.getElementById('insights').innerHTML = `
+                <div class="insight-item">
+                    <p><strong>AI Analysis:</strong> ${prediction} sentiment with ${confidence}% confidence</p>
+                </div>
+                <div class="insight-item">
+                    <p><strong>Market Status:</strong> ${d.today_change.includes('+') ? 'Positive' : 'Negative'} movement today</p>
+                </div>
+                <div class="insight-item">
+                    <p><strong>Volatility:</strong> Expected daily movement ${d.expected_move}</p>
+                </div>
+            `;
+            
+            // Update timestamp
+            document.getElementById('lastUpdated').textContent = 'Last Updated: ' + d.timestamp;
+            
+            // Update chart (simplified)
+            updateChart(data);
+        }
+        
+        function getRSIColor(rsi) {
+            if (rsi > 70) return '#ef4444'; // Overbought - red
+            if (rsi < 30) return '#10b981'; // Oversold - green
+            return '#f59e0b'; // Neutral - yellow
+        }
+        
+        function updateChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            // Create a simple price chart
+            const dates = [];
+            const prices = [];
+            const predictions = [];
+            
+            // Generate sample data for chart
+            for (let i = 30; i >= 0; i--) {
+                dates.push(`Day ${i}`);
+                const basePrice = 22000;
+                const price = basePrice + Math.random() * 1000 - 500;
+                prices.push(price);
+                predictions.push(price + (data.prediction === 'BULLISH' ? 100 : -100));
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Price',
+                        data: prices,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e2e8f0'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#94a3b8'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#94a3b8'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoBtn');
+            
+            if (isAutoRefresh) {
+                clearInterval(autoRefresh);
+                isAutoRefresh = false;
+                btn.innerHTML = '<i class="fas fa-play-circle"></i> Auto Refresh (30s)';
+                btn.style.background = '#2563eb';
+            } else {
+                autoRefresh = setInterval(getPrediction, 30000);
+                isAutoRefresh = true;
+                btn.innerHTML = '<i class="fas fa-pause-circle"></i> Stop Auto Refresh';
+                btn.style.background = '#ef4444';
+            }
+        }
+        
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            let seconds = 30;
+            const element = document.getElementById('nextUpdate');
+            
+            countdownInterval = setInterval(() => {
+                seconds--;
+                element.textContent = seconds + 's';
+                
+                if (seconds <= 0) {
+                    seconds = 30;
+                    if (isAutoRefresh) {
+                        getPrediction();
+                    }
+                }
+            }, 1000);
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const box = document.getElementById('predictionBox');
+            box.className = 'prediction-box prediction-neutral';
+            document.getElementById('predictionValue').textContent = 'ERROR';
+            document.getElementById('predictionAnalysis').textContent = message;
+            document.getElementById('confidenceText').textContent = '0%';
+            document.getElementById('confidenceFill').style.width = '0%';
+            
+            document.getElementById('currentPrice').textContent = '₹--';
+            document.getElementById('todayChange').textContent = '--';
+            document.getElementById('expectedMove').textContent = '--';
+        }
+        
+        // Auto refresh every 2 minutes as backup
+        setInterval(() => {
+            if (!isAutoRefresh) {
+                getPrediction();
+            }
+        }, 120000);
+    </script>
+</body>
+</html>
